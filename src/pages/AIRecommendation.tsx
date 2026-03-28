@@ -21,16 +21,24 @@ export default function AIRecommendation() {
   const handleGetRecommendation = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setRecommendation(null);
     try {
       const response = await fetch('/api/ai/recommend', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ budget, preferences, guestCount })
       });
+      
       const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to get recommendation');
+      }
+      
       setRecommendation(data);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to get recommendation:', error);
+      alert(error.message || 'An error occurred while generating the recommendation.');
     } finally {
       setLoading(false);
     }

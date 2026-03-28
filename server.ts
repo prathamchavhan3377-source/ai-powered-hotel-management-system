@@ -17,13 +17,13 @@ async function startServer() {
   app.use(express.json());
 
   // AI Recommendation Endpoint
-  app.post("/api/ai/recommend", async (req, res) => {
+    app.post("/api/ai/recommend", async (req, res) => {
     try {
       const { budget, preferences, guestCount } = req.body;
       const apiKey = process.env.GEMINI_API_KEY;
 
       if (!apiKey) {
-        return res.status(500).json({ error: "GEMINI_API_KEY is not configured." });
+        return res.status(500).json({ error: "GEMINI_API_KEY is not configured. Please set it in your environment variables." });
       }
 
       const ai = new GoogleGenAI({ apiKey });
@@ -49,13 +49,29 @@ async function startServer() {
       const response = await ai.models.generateContent({
         model,
         contents: prompt,
-        config: { responseMimeType: "application/json" }
+        config: { 
+          responseMimeType: "application/json"
+        }
       });
 
-      res.json(JSON.parse(response.text));
-    } catch (error) {
+      const text = response.text;
+      if (!text) {
+        throw new Error("AI failed to generate a response.");
+      }
+
+      // Clean the response text in case it contains markdown markers
+      const cleanedText = text.replace(/```json\n?|```/g, "").trim();
+      
+      try {
+        const parsedData = JSON.parse(cleanedText);
+        res.json(parsedData);
+      } catch (parseError) {
+        console.error("JSON Parse Error:", parseError, "Original Text:", text);
+        res.status(500).json({ error: "Failed to parse AI response." });
+      }
+    } catch (error: any) {
       console.error("AI Recommendation Error:", error);
-      res.status(500).json({ error: "Failed to generate recommendation." });
+      res.status(500).json({ error: error.message || "Failed to generate recommendation." });
     }
   });
 
