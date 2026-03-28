@@ -1,0 +1,109 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+          (request.auth.token.email == "prathamchavhan3377@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function isStaff() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'staff' || isAdmin());
+    }
+
+    function isGuest() {
+      return isAuthenticated() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'guest';
+    }
+
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    function isValidEmail(email) {
+      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+
+    function isValidRoom(data) {
+      return hasRequiredFields(['roomNumber', 'type', 'price', 'capacity', 'status']) &&
+             data.roomNumber is string && data.roomNumber.size() > 0 &&
+             data.type in ['Single', 'Double', 'Suite', 'Deluxe'] &&
+             data.price is number && data.price >= 0 &&
+             data.capacity is int && data.capacity > 0 &&
+             data.status in ['Available', 'Occupied', 'Maintenance'];
+    }
+
+    function isValidCustomer(data) {
+      return hasRequiredFields(['name', 'email', 'phone']) &&
+             data.name is string && data.name.size() > 0 &&
+             isValidEmail(data.email) &&
+             data.phone is string && data.phone.size() > 0;
+    }
+
+    function isValidBooking(data) {
+      return hasRequiredFields(['roomId', 'customerId', 'checkIn', 'checkOut', 'totalAmount', 'status']) &&
+             data.roomId is string &&
+             data.customerId is string &&
+             data.checkIn is string &&
+             data.checkOut is string &&
+             data.totalAmount is number && data.totalAmount >= 0 &&
+             data.status in ['Confirmed', 'Checked-In', 'Checked-Out', 'Cancelled'];
+    }
+
+    function isValidUser(data) {
+      return hasRequiredFields(['uid', 'email', 'role']) &&
+             data.uid == request.auth.uid &&
+             isValidEmail(data.email) &&
+             data.role in ['admin', 'staff', 'guest'];
+    }
+
+    // ===============================================================
+    // Collection Rules
+    // ===============================================================
+
+    match /rooms/{roomId} {
+      allow read: if isAuthenticated();
+      allow write: if isStaff();
+      allow create, update: if isStaff() && isValidRoom(request.resource.data);
+    }
+
+    match /customers/{customerId} {
+      allow read: if isStaff() || isOwner(customerId);
+      allow write: if isStaff() || isOwner(customerId);
+      allow create, update: if (isStaff() || isOwner(customerId)) && isValidCustomer(request.resource.data);
+    }
+
+    match /bookings/{bookingId} {
+      allow read: if isStaff() || (isAuthenticated() && resource.data.customerId == request.auth.uid);
+      allow create: if (isStaff() || (isAuthenticated() && request.resource.data.customerId == request.auth.uid)) && isValidBooking(request.resource.data);
+      allow update: if isStaff() || (isAuthenticated() && resource.data.customerId == request.auth.uid && isValidBooking(request.resource.data));
+      allow delete: if isStaff();
+    }
+
+    match /users/{userId} {
+      allow read: if isAuthenticated() && (isOwner(userId) || isAdmin());
+      allow create: if isAuthenticated() && isOwner(userId) && isValidUser(request.resource.data) && (request.resource.data.role in ['staff', 'guest'] || isAdmin());
+      allow update: if isAuthenticated() && isOwner(userId) && isValidUser(request.resource.data) && (request.resource.data.role == resource.data.role || isAdmin());
+    }
+  }
+}

@@ -1,0 +1,65 @@
+{
+  "entities": {
+    "Room": {
+      "title": "Room",
+      "description": "Represents a hotel room.",
+      "type": "object",
+      "properties": {
+        "roomNumber": { "type": "string", "description": "Unique room number" },
+        "type": { "type": "string", "enum": ["Single", "Double", "Suite", "Deluxe"], "description": "Type of room" },
+        "price": { "type": "number", "description": "Price per night" },
+        "capacity": { "type": "integer", "description": "Maximum number of guests" },
+        "status": { "type": "string", "enum": ["Available", "Occupied", "Maintenance"], "description": "Current status of the room" },
+        "description": { "type": "string", "description": "Brief description of the room" },
+        "imageUrl": { "type": "string", "description": "URL of the room's image" }
+      },
+      "required": ["roomNumber", "type", "price", "capacity", "status"]
+    },
+    "Customer": {
+      "title": "Customer",
+      "description": "Represents a hotel guest.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "Full name of the customer" },
+        "email": { "type": "string", "format": "email", "description": "Email address" },
+        "phone": { "type": "string", "description": "Contact phone number" },
+        "idProof": { "type": "string", "description": "ID proof details (e.g., Passport, Aadhar)" },
+        "address": { "type": "string", "description": "Residential address" }
+      },
+      "required": ["name", "email", "phone"]
+    },
+    "Booking": {
+      "title": "Booking",
+      "description": "Represents a room reservation.",
+      "type": "object",
+      "properties": {
+        "roomId": { "type": "string", "description": "ID of the booked room" },
+        "customerId": { "type": "string", "description": "ID of the customer" },
+        "checkIn": { "type": "string", "format": "date-time", "description": "Check-in date and time" },
+        "checkOut": { "type": "string", "format": "date-time", "description": "Check-out date and time" },
+        "totalAmount": { "type": "number", "description": "Total cost of the stay" },
+        "status": { "type": "string", "enum": ["Confirmed", "Checked-In", "Checked-Out", "Cancelled"], "description": "Booking status" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "When the booking was made" }
+      },
+      "required": ["roomId", "customerId", "checkIn", "checkOut", "totalAmount", "status"]
+    },
+    "User": {
+      "title": "User",
+      "description": "Represents a system user (Admin or Staff).",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Firebase Auth UID" },
+        "email": { "type": "string", "format": "email", "description": "Email address" },
+        "role": { "type": "string", "enum": ["admin", "staff", "guest"], "description": "User role" },
+        "displayName": { "type": "string", "description": "Display name" }
+      },
+      "required": ["uid", "email", "role"]
+    }
+  },
+  "firestore": {
+    "/rooms/{roomId}": { "schema": "Room", "description": "Collection of hotel rooms" },
+    "/customers/{customerId}": { "schema": "Customer", "description": "Collection of guests" },
+    "/bookings/{bookingId}": { "schema": "Booking", "description": "Collection of reservations" },
+    "/users/{userId}": { "schema": "User", "description": "System users and roles" }
+  }
+}
